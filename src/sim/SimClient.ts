@@ -103,7 +103,7 @@ export class SimClient {
    * 与批量回放走完全相同的日志语义。
    */
   applyInteractiveOp(op: Omit<LogOp, 'atStep'>): LogOp | null {
-    if (!this.state) return null;
+    if (!this.state || this.state.step >= this.state.maxSteps) return null;
     const full: LogOp = { ...op, atStep: this.state.step };
     this.send({ type: 'op', gen: this.gen, op: full });
     return full;

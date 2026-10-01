@@ -131,7 +131,12 @@ export function App() {
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: 16, padding: 16 }}>
         <div>
           {state && (
-            <ClothCanvas stateRef={stateRef} clientRef={clientRef} busy={busy} onInteract={() => {}} />
+            <ClothCanvas
+              stateRef={stateRef}
+              clientRef={clientRef}
+              disabled={busy || state.step >= state.maxSteps}
+              onInteract={() => {}}
+            />
           )}
           <p style={{ fontSize: 12.5, color: '#6f6656', margin: '8px 2px' }}>
             操作：点击节点 固定 / 释放挂点；按住橙色挂点拖动后松开可移动挂点（推进间隙可操作）。

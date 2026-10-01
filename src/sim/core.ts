@@ -216,7 +216,7 @@ function tearCheck(state: SimState): void {
   }
 }
 
-/** 松弛一条完好的边；固定点权重为 0。 */
+/** 松弛一条完好的边；固定点权重为 0，修正量按各端自身权重分配。 */
 function relaxEdge(nodes: SimNode[], e: SimEdge): void {
   const a = nodes[e.a];
   const b = nodes[e.b];
@@ -231,12 +231,12 @@ function relaxEdge(nodes: SimNode[], e: SimEdge): void {
   const ox = dx * diff;
   const oy = dy * diff;
   if (wa !== 0) {
-    a.x += (wb / wSum) * ox;
-    a.y += (wb / wSum) * oy;
+    a.x += (wa / wSum) * ox;
+    a.y += (wa / wSum) * oy;
   }
   if (wb !== 0) {
-    b.x -= (wa / wSum) * ox;
-    b.y -= (wa / wSum) * oy;
+    b.x -= (wb / wSum) * ox;
+    b.y -= (wb / wSum) * oy;
   }
 }
 

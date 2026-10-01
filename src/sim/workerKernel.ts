@@ -79,7 +79,7 @@ export class SimWorkerKernel {
         break;
       }
       case 'op': {
-        if (!this.state) return;
+        if (!this.state || this.state.step >= this.state.maxSteps) return;
         // 交互操作与回放操作共用日志通道：先追加，再立即消费所有到期条目。
         // 这样同一条 op 在“实时交互”和“按日志重放”下执行点完全一致且只执行一次。
         appendOp(this.state, msg.op);

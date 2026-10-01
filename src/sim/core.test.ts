@@ -36,6 +36,56 @@ export function digest(s: SimState): unknown {
   return { config, nodes, edges, step, maxSteps, log };
 }
 
+describe('边长约束修正', () => {
+  it('挂点-自由节点的边超伸时，整段修正都施加在自由节点上', () => {
+    const state = createInitialState(makeConfig({ gravity: 0, iterations: 1, horizontalPasses: 1, verticalPasses: 1, tearFactor: 5 }));
+    for (const e of state.edges) {
+      if (!(e.a === 0 && e.b === 1)) e.torn = true;
+    }
+    const pinned = state.nodes[0];
+    const free = state.nodes[1];
+
+    pinned.pinned = true;
+    pinned.x = pinned.px = pinned.pinX;
+    pinned.y = pinned.py = pinned.pinY;
+    free.x = pinned.x + 40;
+    free.y = pinned.y;
+    free.px = free.x;
+    free.py = free.y;
+
+    stepOnce(state);
+
+    expect(pinned.x).toBe(pinned.pinX);
+    expect(pinned.y).toBe(pinned.pinY);
+    expect(free.x).toBeCloseTo(pinned.x + state.config.spacing, 9);
+    expect(free.y).toBeCloseTo(pinned.y, 9);
+  });
+
+  it('两个自由节点组成的边超伸时，两端各承担一半修正', () => {
+    const state = createInitialState(makeConfig({ gravity: 0, iterations: 1, horizontalPasses: 1, verticalPasses: 1, tearFactor: 5 }));
+    for (const e of state.edges) {
+      if (!(e.a === 0 && e.b === 1)) e.torn = true;
+    }
+    const a = state.nodes[0];
+    const b = state.nodes[1];
+    a.pinned = false;
+    b.pinned = false;
+    a.x = 0;
+    a.y = 0;
+    a.px = 0;
+    a.py = 0;
+    b.x = 40;
+    b.y = 0;
+    b.px = 40;
+    b.py = 0;
+
+    stepOnce(state);
+
+    expect(a.x).toBeCloseTo(10, 9);
+    expect(b.x).toBeCloseTo(30, 9);
+  });
+});
+
 describe('固定挂点不漂移', () => {
   it('顶边挂点经过任意步数后坐标与速度恒等于 pin 坐标', () => {
     const state = createInitialState(makeConfig());

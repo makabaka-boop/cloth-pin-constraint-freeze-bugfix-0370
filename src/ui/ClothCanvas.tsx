@@ -6,7 +6,7 @@ import type { SimState } from '../sim/types';
 interface Props {
   stateRef: RefObject<SimState | null>;
   clientRef: RefObject<SimClient | null>;
-  busy: boolean;
+  disabled: boolean;
   onInteract: () => void;
 }
 
@@ -26,12 +26,12 @@ interface DragState {
  * 布料画布：节点/边渲染 + 挂点交互（点击固定/释放，拖动移动挂点）。
  * 渲染数据每帧从 stateRef 读取同一个快照；交互直接写 SimClient。
  */
-export function ClothCanvas({ stateRef, clientRef, busy, onInteract }: Props) {
+export function ClothCanvas({ stateRef, clientRef, disabled, onInteract }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const hoverRef = useRef<number | null>(null);
-  const busyRef = useRef(busy);
-  busyRef.current = busy;
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
 
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -139,7 +139,7 @@ export function ClothCanvas({ stateRef, clientRef, busy, onInteract }: Props) {
   };
 
   const onPointerDown = (ev: React.PointerEvent) => {
-    if (busyRef.current) return;
+    if (disabledRef.current) return;
     const { x, y } = pos(ev);
     const idx = pickNode(x, y);
     if (idx === null) return;
@@ -183,7 +183,7 @@ export function ClothCanvas({ stateRef, clientRef, busy, onInteract }: Props) {
     const drag = dragRef.current;
     const client = clientRef.current;
     dragRef.current = null;
-    if (!drag || !client || busyRef.current) return;
+    if (!drag || !client || disabledRef.current) return;
     const { x, y } = pos(ev);
     const n = stateRef.current!.nodes[drag.node];
 
@@ -214,7 +214,7 @@ export function ClothCanvas({ stateRef, clientRef, busy, onInteract }: Props) {
       ref={canvasRef}
       width={900}
       height={640}
-      style={{ background: '#faf8f3', border: '1px solid #c9c2b4', borderRadius: 6, touchAction: 'none' }}
+      style={{ background: '#faf8f3', border: '1px solid #c9c2b4', borderRadius: 6, touchAction: 'none', cursor: disabled ? 'not-allowed' : 'default' }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

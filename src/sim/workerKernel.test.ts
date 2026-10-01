@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { advance, createInitialState } from './core';
+import { MAX_STEPS, advance, createInitialState } from './core';
 import { SimWorkerKernel } from './workerKernel';
 import type { WorkerResponse } from './protocol';
 import { digest, makeConfig } from './core.test';
@@ -101,6 +101,54 @@ describe('Worker 分块推进 = 内核直推', () => {
     ref.log = live.log.map((o) => ({ ...o }));
     advance(ref, 150);
     expect(digest(live)).toEqual(digest(ref));
+    client.destroy();
+  });
+});
+
+describe('600 步后的终态冻结', () => {
+  it('终态后交互 op 不能修改节点或追加日志', async () => {
+    const { kernel, replies } = collectKernel();
+    kernel.handle({ type: 'init', gen: 0, config: makeConfig(), pinTopRow: true });
+    kernel.handle({ type: 'advance', gen: 0, advanceId: 1, steps: MAX_STEPS });
+    await flushMicrotasks();
+
+    const before = replies.filter((m) => m.type === 'progress').slice(-1)[0];
+    if (before.type !== 'progress') throw new Error('unreachable');
+    expect(before.state.step).toBe(MAX_STEPS);
+
+    const replyCount = replies.length;
+    kernel.handle({
+      type: 'op',
+      gen: 0,
+      op: { type: 'movePin', atStep: MAX_STEPS, node: 0, pinned: true, x: 123, y: 45 },
+    });
+    expect(replies.length).toBe(replyCount);
+
+    kernel.handle({ type: 'snapshot', gen: 0 });
+    const snapshot = replies.filter((m) => m.type === 'snapshot').slice(-1)[0];
+    if (snapshot.type !== 'snapshot') throw new Error('unreachable');
+    expect(snapshot.state.step).toBe(MAX_STEPS);
+    expect(snapshot.state.nodes[0].x).toBe(before.state.nodes[0].x);
+    expect(snapshot.state.nodes[0].y).toBe(before.state.nodes[0].y);
+    expect(snapshot.state.log).toEqual([]);
+  });
+
+  it('SimClient 在终态拒绝交互，返回 null 且不改变快照', async () => {
+    const { SimClient, createInlineWorkerFactory } = await import('./SimClient');
+    const client = new SimClient(createInlineWorkerFactory(), makeConfig({ cols: 8, rows: 8 }), true);
+    await flushMicrotasks();
+    const result = await client.advance(MAX_STEPS);
+    expect(result.finished).toBe(true);
+
+    const before = client.getSnapshot()!;
+    const op = client.applyInteractiveOp({ type: 'setPin', node: 5, pinned: false });
+
+    expect(op).toBeNull();
+    await flushMicrotasks();
+    const after = client.getSnapshot()!;
+    expect(after.step).toBe(MAX_STEPS);
+    expect(after.log).toEqual([]);
+    expect(after.nodes[5].pinned).toBe(before.nodes[5].pinned);
     client.destroy();
   });
 });
